@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>DailyGunsmith</AssemblyName>
+    <RootNamespace>DailyGunsmith</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <Authors>m1starkot</Authors>
+    <Product>Daily Gunsmith</Product>
+    <Description>Daily randomly generated Gunsmith-style weapon assembly quests for SPT.</Description>
+    <!-- Floating version: resolves to the newest published 4.1.x server packages.
+         Pin to an exact version (e.g. 4.1.6) if one exists on NuGet for your install. -->
+    <SptVersion>4.1.*</SptVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SPTarkov.Common" Version="$(SptVersion)" ExcludeAssets="runtime" />
+    <PackageReference Include="SPTarkov.DI" Version="$(SptVersion)" ExcludeAssets="runtime" />
+    <PackageReference Include="SPTarkov.Server.Core" Version="$(SptVersion)" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="config\config.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="locales\*.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
