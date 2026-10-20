@@ -182,9 +182,3 @@ fixed clock times - e.g. `12` at 00:00 and 12:00, `3` at 00:00, 03:00, 06:00 ...
 every 48 hours. The server checks once a minute. With `deterministicPerDay: true` the same period always yields the
 same quests, so restarting the server doesn't reset your progress.
 
-## Notes
-
-* Old daily quests are removed from the quest database at rollover; a quest you started but didn't finish before
-  the end of the refresh period will disappear.
-* Reward weapons are assembled from their mandatory slots (plus the magazine); armor gets plates/soft inserts from the
-  middle of the price range. Parts come from the item database, so modded gear works too.
