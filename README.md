@@ -98,7 +98,7 @@ Per tier, `suppressorChance`, `foregripChance` and `tacticalChance` (0..1) set h
 generator picked (strict old behaviour - use it if the game rejects quests with several categories).
 `autoDetect: true` extends the groups from the item database: every class (also from mods) named "silencer"/"suppressor"
 joins `suppressor`, and the class of every sight with magnification joins `assaultScope` / `scope` / `specialScope`, so all magnified sights and all
-suppressors (any caliber, vanilla or modded) count. The added classes are printed to the server log at startup.
+suppressors (any caliber, vanilla or modded) count. The auto-detected classes are listed in the dry-run report only (not in the server log).
 
 ### Limits (ergonomics / recoil / weight)
 
@@ -109,7 +109,7 @@ completions - using actual item data for whatever parts fill the remaining manda
 stock/pistol grip). Each completed build's ergonomics, recoil and weight are read straight from the item database;
 the *worst* value across all of these real, playable builds (lowest ergonomics, highest recoil, heaviest weight)
 becomes the basis for the limit. Only a small, mostly fixed safety margin is then added on top - a couple of
-ergonomics points, ~3% recoil, and a `weightMarginMin`..`weightMarginMax` multiplier (defaults 1.05 - 1.25, rounded
+ergonomics points, ~3% recoil, and a `weightMarginMin`..`weightMarginMax` multiplier (defaults 1.15 - 1.35, rounded
 up to 0.1 kg) - to cover rounding and the few mandatory-slot combinations the samples didn't happen to hit. This
 keeps the numbers tied to the actual modules on the weapon (realistic) while still guaranteeing every generated
 quest can be completed, which the dry run's self-check (below) verifies for every quest it generates.

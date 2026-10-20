@@ -1,0 +1,201 @@
+{
+  "enabled": true,
+  "useUtc": false,
+  "refreshIntervalHours": 24,
+  "deterministicPerDay": true,
+  "seedSalt": "daily-gunsmith",
+  "refreshLoadedLocales": true,
+  "traderId": "5a7c2eca46aef81a7ca2145d",
+  "globalRewardMultiplier": 1.0,
+  "requireHandbookEntry": true,
+  "minWeaponSlots": 3,
+  "vanillaItemsPath": "",
+  "weightMarginMin": 1.15,
+  "weightMarginMax": 1.35,
+  "categoryGroups": {
+    "suppressor": ["550aa4cd4bdc2dd8348b456c"],
+    "reflex": ["55818ad54bdc2ddc698b4569", "55818acf4bdc2dde698b456b"],
+    "foregrip": ["55818af64bdc2d5b648b4570"],
+    "tactical": ["55818b084bdc2d5b648b4571", "55818b0e4bdc2dde698b456e", "55818b164bdc2ddc698b456c"],
+    "assaultScope": ["55818add4bdc2d5b648b456f"],
+    "scope": ["55818ae44bdc2dde698b456c"],
+    "specialScope": ["55818aeb4bdc2ddc698b456a"],
+    "emitAllMembers": true,
+    "autoDetect": true
+  },
+  "weapons": {
+    "includeModded": true,
+    "blacklist": [],
+    "whitelist": [],
+    "extra": [],
+    "categoryBlacklist": [
+      "5447bedf4bdc2d87278b4568",
+      "5447bee84bdc2dc3278b4569"
+    ]
+  },
+  "modules": {
+    "includeModded": true,
+    "blacklist": [],
+    "whitelist": [],
+    "extra": [],
+    "categoryBlacklist": []
+  },
+  "build": {
+    "maxDepth": 6,
+    "childSlotBoost": 1.5,
+    "defaultSlotWeight": 1,
+    "slotWeights": {
+      "scope": 6,
+      "sight": 6,
+      "handguard": 6,
+      "grip": 6,
+      "muzzle": 5,
+      "mount": 3,
+      "reciever": 3,
+      "receiver": 3,
+      "stock": 2,
+      "tactical": 2,
+      "magazine": 2,
+      "barrel": 2
+    }
+  },
+  "dryRun": {
+    "enabled": false,
+    "sampleCount": 30,
+    "folder": "dryrun"
+  },
+  "tiers": [
+    {
+      "name": "Easy",
+      "weight": 50,
+      "minLevel": 5,
+      "maxLevel": 20,
+      "questsPerDay": 1,
+      "levelWeightScale": -0.025,
+      "minMods": 3,
+      "maxMods": 4,
+      "suppressorChance": 0.1,
+      "foregripChance": 0.1,
+      "tacticalChance": 0.1,
+      "magazineChance": 0.15,
+      "sightModeWeights": {
+        "none": 4,
+        "collimator": 5,
+        "assaultScope": 0.5,
+        "scope": 0.5,
+        "specialScope": 0,
+        "collimatorAssaultScope": 0,
+        "collimatorScope": 0,
+        "collimatorSpecialScope": 0
+      },
+      "weaponClassWeights": {
+        "pistol": 6,
+        "smg": 6,
+        "assaultRifle": 2,
+        "marksmanRifle": 1,
+        "sniperRifle": 1,
+        "other": 1
+      },
+      "maxArmorClass": 4,
+      "rewardCategoryWeights": {
+        "barter": 7,
+        "ammo": 2.5,
+        "armor": 1.5,
+        "weapon": 1.5,
+        "key": 1
+      },
+      "rewardMultiplier": 1.0,
+      "roubles": 65000,
+      "experience": 5000,
+      "standing": 0.01
+    },
+    {
+      "name": "Medium",
+      "weight": 35,
+      "minLevel": 21,
+      "maxLevel": 35,
+      "questsPerDay": 1,
+      "levelWeightScale": 0.04,
+      "minMods": 5,
+      "maxMods": 7,
+      "suppressorChance": 0.35,
+      "foregripChance": 0.25,
+      "tacticalChance": 0.25,
+      "magazineChance": 0.3,
+      "sightModeWeights": {
+        "none": 2,
+        "collimator": 4,
+        "assaultScope": 1.5,
+        "scope": 1.5,
+        "specialScope": 1,
+        "collimatorAssaultScope": 0.5,
+        "collimatorScope": 0.5,
+        "collimatorSpecialScope": 0
+      },
+      "weaponClassWeights": {
+        "pistol": 1,
+        "smg": 2,
+        "assaultRifle": 6,
+        "marksmanRifle": 6,
+        "sniperRifle": 2,
+        "other": 1
+      },
+      "maxArmorClass": 5,
+      "rewardCategoryWeights": {
+        "barter": 7,
+        "armor": 2,
+        "weapon": 2,
+        "ammo": 2,
+        "key": 1.5
+      },
+      "rewardMultiplier": 1.0,
+      "roubles": 110000,
+      "experience": 8000,
+      "standing": 0.02
+    },
+    {
+      "name": "Hard",
+      "weight": 15,
+      "minLevel": 36,
+      "maxLevel": 0,
+      "questsPerDay": 1,
+      "levelWeightScale": 0.12,
+      "minMods": 8,
+      "maxMods": 10,
+      "suppressorChance": 0.6,
+      "foregripChance": 0.4,
+      "tacticalChance": 0.4,
+      "magazineChance": 0.45,
+      "sightModeWeights": {
+        "none": 1,
+        "collimator": 2,
+        "assaultScope": 1.5,
+        "scope": 1.5,
+        "specialScope": 1,
+        "collimatorAssaultScope": 1.5,
+        "collimatorScope": 1.5,
+        "collimatorSpecialScope": 1
+      },
+      "weaponClassWeights": {
+        "pistol": 0.5,
+        "smg": 1,
+        "assaultRifle": 5,
+        "marksmanRifle": 3,
+        "sniperRifle": 6,
+        "other": 1
+      },
+      "maxArmorClass": 6,
+      "rewardCategoryWeights": {
+        "barter": 8,
+        "armor": 2.5,
+        "weapon": 2,
+        "ammo": 1.5,
+        "key": 2
+      },
+      "rewardMultiplier": 1.0,
+      "roubles": 180000,
+      "experience": 14000,
+      "standing": 0.03
+    }
+  ]
+}

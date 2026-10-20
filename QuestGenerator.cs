@@ -1139,9 +1139,6 @@ namespace DailyGunsmith
             float ergEstimate = (float)(weapon.BaseErgonomics + ergSum);
             float recoilEstimate = (float)(weapon.BaseRecoil * Math.Max(0.3, 1 + recoilPct / 100.0));
 
-            // The worst case above already accounts for real variation between completions, so only a small, fixed
-            // safety margin is added on top (rounding + the handful of mandatory-slot combinations the samples
-            // above didn't happen to hit) - not a large random fudge factor disconnected from the actual modules.
             // Ergonomics is a minimum ("at least"), recoil and weight are maximums.
             // The lower bound must never exceed what the witness build can actually reach: very heavy builds can have
             // ergonomics below 10 (even negative), and a hard floor of 10 made such quests impossible to hand in.
@@ -1149,7 +1146,7 @@ namespace DailyGunsmith
             reqs.MinErgonomics = Math.Clamp((float)Math.Floor(ergEstimate) - 2f, 0f, 85f);
             // No upper clamp: a hard cap (the old 800) lies below the real recoil of heavy-recoil weapons and makes the quest
             // impossible. A lower bound only loosens the requirement, so it is harmless.
-            reqs.MaxRecoilSum = Math.Max(90f, (float)Math.Ceiling(recoilEstimate * 1.03f));
+            reqs.MaxRecoilSum = Math.Max(90f, (float)Math.Ceiling(recoilEstimate * 1.1f));
 
             // Weight: worst-case real completion weight x a (now much smaller) configurable margin, no extra flat buffer.
             double marginMin = Math.Max(1.0, _config.WeightMarginMin);
@@ -1165,32 +1162,27 @@ namespace DailyGunsmith
             var indexOf = new Dictionary<PlacedNode, int>();
             for (int i = 0; i < nodes.Count; i++) indexOf[nodes[i]] = i;
 
+            // The tier promises at least minMods parts: fewer means the layout failed -> retry.
+            if (nodes.Count(n => !(n.ProofCategory != null && n.Children == 0)) < minMods) { reqs.HasConflict = true; return reqs; }
+
             foreach (var n in nodes)
             {
                 bool listed = !(n.ProofCategory != null && n.Children == 0);
-                if (listed)
+                if (listed) reqs.RequiredMods.Add(new ModEntry { TemplateId = n.Id });
+                if (n.ProofCategory != null)
                 {
-                    reqs.RequiredMods.Add(new ModEntry { TemplateId = n.Id });
+                    var ids = groups.EmitAllMembers ? GroupIds(n.ProofCategory!) : GroupIds(n.ProofCategory!).Where(g => _catalog.IsDescendantOf(n.Id, g)).Take(1).ToList();
+                    foreach (var id in ids) if (!reqs.Categories.Contains(id)) reqs.Categories.Add(id);
                 }
-                else
-                {
-                    // unlisted proof part: the quest requires "any item of the group"
-                    var ids = groups.EmitAllMembers
-                        ? GroupIds(n.ProofCategory!)
-                        : GroupIds(n.ProofCategory!).Where(g => _catalog.IsDescendantOf(n.Id, g)).Take(1).ToList();
-                    foreach (var id in ids)
-                        if (!reqs.Categories.Contains(id)) reqs.Categories.Add(id);
-                }
+                reqs.Parts.Add(new PartRecord { Tpl = n.Id, ParentIndex = n.Parent != null ? indexOf[n.Parent] : -1, SlotName = n.SlotName, Depth = n.Depth, Listed = listed, ProofCategory = n.ProofCategory });
+            }
 
-                reqs.Parts.Add(new PartRecord
-                {
-                    Tpl = n.Id,
-                    ParentIndex = n.Parent != null ? indexOf[n.Parent] : -1,
-                    SlotName = n.SlotName,
-                    Depth = n.Depth,
-                    Listed = listed,
-                    ProofCategory = n.ProofCategory
-                });
+            // Multi-category quests need all-of semantics check: every listed category must be
+            // satisfiable by ONE build (proof parts). Reject if witness covers only some.
+            if (reqs.Categories.Count > 1)
+            {
+                var witnessTree = reqs.Parts.Select(p => p.Tpl).ToList();
+                if (!reqs.Categories.All(c => witnessTree.Any(t => _catalog.IsDescendantOf(t, c)))) { reqs.HasConflict = true; return reqs; }
             }
             return reqs;
         }
@@ -1635,16 +1627,16 @@ namespace DailyGunsmith
                 "        ]," + statsBlock + containsBlock + "\n" +
                 "        \"durability\": {\n" +
                 "          \"compareMethod\": \">=\",\n" +
-                "          \"value\": 60\n" +
+                "          \"value\": 80\n" +
                 "        },\n" +
                 "        \"hasItemFromCategory\": [ " + categoriesJson + " ],\n" +
                 "        \"height\": {\n" +
                 "          \"compareMethod\": \"<=\",\n" +
-                "          \"value\": 10\n" +
+                "          \"value\": 20\n" +
                 "        },\n" +
                 "        \"width\": {\n" +
                 "          \"compareMethod\": \"<=\",\n" +
-                "          \"value\": 10\n" +
+                "          \"value\": 20\n" +
                 "        },\n" +
                 "        \"magazineCapacity\": {\n" +
                 "          \"compareMethod\": \">=\",\n" +

@@ -51,6 +51,11 @@ internal static class ConfigValidator
         if (config.RefreshIntervalHours < 1 || config.RefreshIntervalHours > 24 * 365)
             warnings.Add($"refreshIntervalHours: {config.RefreshIntervalHours} is outside 1..8760 and will be clamped");
 
+        if (config.WeightMarginMin < 1.0) warnings.Add($"weightMarginMin: {config.WeightMarginMin} is below 1.0 and will be raised to 1.0");
+        if (config.WeightMarginMax < config.WeightMarginMin) warnings.Add($"weightMarginMax ({config.WeightMarginMax}) is lower than weightMarginMin ({config.WeightMarginMin}), weightMarginMin is used for both");
+        if (config.Build.MaxDepth < 1) warnings.Add($"build.maxDepth: {config.Build.MaxDepth} is below 1 and will be treated as 1");
+        if (config.Build.ChildSlotBoost < 0) warnings.Add($"build.childSlotBoost: {config.Build.ChildSlotBoost} is negative and will be treated as 0");
+
         foreach (var kv in config.Build.SlotWeights)
             if (kv.Value < 0) warnings.Add($"build.slotWeights.{kv.Key}: negative weight {kv.Value}");
 
@@ -68,9 +73,12 @@ internal static class ConfigValidator
             if (t.MagazineChance < 0 || t.MagazineChance > 1) warnings.Add($"tiers.{t.Name}: magazineChance must be between 0 and 1");
             foreach (var key in t.SightModeWeights.Keys)
                 if (!SightModes.Contains(key) && !LegacySightModes.Contains(key)) warnings.Add($"tiers.{t.Name}.sightModeWeights: unknown key '{key}' (allowed: {string.Join(", ", SightModes)})");
+            foreach (var kv in t.SightModeWeights.Concat(t.WeaponClassWeights).Concat(t.RewardCategoryWeights))
+                if (kv.Value < 0) warnings.Add($"tiers.{t.Name}: negative weight for '{kv.Key}'");
+            if (t.Standing < 0) warnings.Add($"tiers.{t.Name}.standing: negative value");
             foreach (var key in t.WeaponClassWeights.Keys)
                 if (!WeaponClassKeys.Contains(key)) warnings.Add($"tiers.{t.Name}.weaponClassWeights: unknown key '{key}' (allowed: {string.Join(", ", WeaponClassKeys)})");
-            if (t.MaxArmorClass < 1 || t.MaxArmorClass > 10) warnings.Add($"tiers.{t.Name}.maxArmorClass: {t.MaxArmorClass} is outside 1..10");
+            if (t.MaxArmorClass < 0 || t.MaxArmorClass > 6) warnings.Add($"tiers.{t.Name}.maxArmorClass: {t.MaxArmorClass} is outside 0..6 (0 = automatic)");
             foreach (var key in t.RewardCategoryWeights.Keys)
                 if (!RewardCategoryKeys.Contains(key)) warnings.Add($"tiers.{t.Name}.rewardCategoryWeights: unknown key '{key}' (allowed: {string.Join(", ", RewardCategoryKeys)})");
         }

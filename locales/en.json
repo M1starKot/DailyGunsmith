@@ -1,0 +1,11 @@
+{
+  "title": "Daily Gunsmith: {0}",
+  "description": "Assemble a {0}. Minimum durability: 80%. Minimum ergonomics: {1}. Maximum recoil sum: {2}. Maximum weight: {3} kg. Required modules: {4}. Required categories: {5}.",
+  "noModules": "none",
+  "noCategories": "none",
+  "success": "Great build, exactly what the client asked for. Here is your payment.",
+  "accept": "I'll take the job.",
+  "decline": "Not now.",
+  "complete": "The weapon is ready, take it.",
+  "condition": "Assemble {0}"
+}

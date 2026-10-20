@@ -74,8 +74,10 @@ public class CategoryGroupsConfig
     /// <summary>
     /// true  = the quest lists every base class of the group (any of them satisfies the quest).
     /// false = the quest lists only the base class of the part the generator placed (old behaviour, strict category).
+    /// NOTE: false is the safe default — with true, quests that need two different groups list several
+    /// category IDs and can only be handed in if the game treats that list as "any of".
     /// </summary>
-    public bool EmitAllMembers { get; set; } = true;
+    public bool EmitAllMembers { get; set; } = false;
 
     /// <summary>
     /// true = groups are extended automatically from the item database:

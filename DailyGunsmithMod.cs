@@ -352,8 +352,6 @@ public class DailyGunsmithMod(
                     continue;
                 }
 
-                dryRunGenerated.Add(gen);
-
                 Quest? quest = TryDeserialize(gen.Json);
                 if (quest == null && gen.JsonWithoutStats != gen.Json)
                 {
@@ -367,6 +365,7 @@ public class DailyGunsmithMod(
                 }
                 if (quest == null) continue;
 
+                dryRunGenerated.Add(gen); // only quests that were really registered appear in the report
                 quests[new MongoId(gen.Id)] = quest;
                 _activeIds.Add(gen.Id);
                 generated.Add(gen);

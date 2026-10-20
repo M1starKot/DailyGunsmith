@@ -157,7 +157,7 @@ internal sealed class ItemCatalog
     public bool IsDescendantOf(string tpl, string baseId)
     {
         var current = tpl;
-        for (var i = 0; i < 25 && current != ""; i++)
+        for (var i = 0; i < 100 && current != ""; i++)
         {
             if (current == baseId) return true;
             if (!Items.TryGetValue(current, out var it)) return false;
