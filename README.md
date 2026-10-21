@@ -13,7 +13,7 @@ Every day a new set of quests is generated:
   required, which weapon classes are likely, which category requirements appear and the rewards.
 * **Limits** - ergonomics is a *minimum* ("at least"); recoil and **weight** are *maximums*. All three are calculated
   from the chosen parts, so they stay achievable.
-* **Category requirements** - a quest may additionally require *any* suppressor and/or a sight type, and/or a
+* **Category requirements** - a quest may additionally require *any* suppressor or muzzle device (brake/compensator/flash hider — mutually exclusive, they share the muzzle slot) and/or a sight type, and/or a
   specific magazine. Sight types: collimator, assault scope, scope, special scope. A build never holds more than two
   sights: a collimator plus ONE magnified sight - assault scope, scope and special scope exclude each other.
 * **Rewards** - roubles, EXP, trader standing and 1-2 items: lootable barter items, jewelry, armor, weapons,
@@ -182,3 +182,9 @@ fixed clock times - e.g. `12` at 00:00 and 12:00, `3` at 00:00, 03:00, 06:00 ...
 every 48 hours. The server checks once a minute. With `deterministicPerDay: true` the same period always yields the
 same quests, so restarting the server doesn't reset your progress.
 
+## Notes
+
+* Old daily quests are removed from the quest database at rollover; a quest you started but didn't finish before
+  the end of the refresh period will disappear.
+* Reward weapons are assembled from their mandatory slots (plus the magazine); armor gets plates/soft inserts from the
+  middle of the price range. Parts come from the item database, so modded gear works too.

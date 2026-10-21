@@ -62,6 +62,9 @@ public class CategoryGroupsConfig
     /// <summary>Tactical devices: flashlights, laser designators and combined tactical devices.</summary>
     public List<string> Tactical { get; set; } = new() { "55818b084bdc2d5b648b4571", "55818b0e4bdc2dde698b456e", "55818b164bdc2ddc698b456c" };
 
+    /// <summary>Muzzle device group: muzzle brakes, compensators and flash hiders (NOT suppressors, they have their own group).</summary>
+    public List<string> Muzzle { get; set; } = new() { "55818b194bdc2ddc698b456e", "55818b1d4bdc2dde698b456d" };
+
     /// <summary>Assault scope group (low-magnification combat scopes).</summary>
     public List<string> AssaultScope { get; set; } = new() { "55818add4bdc2d5b648b456f" };
 

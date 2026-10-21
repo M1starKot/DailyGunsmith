@@ -165,6 +165,11 @@ namespace DailyGunsmith
             public string ClassKey { get; set; } = "other";
             /// <summary>Weight of the lightest working build (all mandatory parts, lightest choice).</summary>
             public double MinimalWeight { get; set; }
+            public double MaximalMandatoryWeight { get; set; }
+            public double MinMandatoryErgoDelta { get; set; }
+            public double MaxMandatoryErgoDelta { get; set; }
+            public double MinMandatoryRecoilPct { get; set; }
+            public double MaxMandatoryRecoilPct { get; set; }
             public List<SlotOptions> Slots { get; set; } = new List<SlotOptions>();
         }
 
@@ -293,6 +298,7 @@ namespace DailyGunsmith
             var g = new Dictionary<string, List<string>>
             {
                 ["suppressor"] = Clean(config.CategoryGroups.Suppressor),
+                ["muzzle"] = Clean(config.CategoryGroups.Muzzle),
                 ["reflex"] = Clean(config.CategoryGroups.Reflex),
                 ["assaultScope"] = Clean(config.CategoryGroups.AssaultScope),
                 ["scope"] = Clean(config.CategoryGroups.Scope),
@@ -334,7 +340,7 @@ namespace DailyGunsmith
                 AddByName("reflex", new[] { "collimator", "reflex", "holo" }, SightsBase);
                 AddByName("foregrip", new[] { "foregrip" }, ItemCatalog.ModBase);
                 AddByName("tactical", new[] { "flashlight", "laser", "tactical" }, ItemCatalog.ModBase);
-
+                AddByName("muzzle", new[] { "muzzle", "compensator", "flash hider", "brake" }, ItemCatalog.ModBase);
                 // every sight with magnification belongs to one of the magnified sight groups: add the class it lives in
                 foreach (var it in catalog.Items.Values)
                 {
@@ -663,9 +669,21 @@ namespace DailyGunsmith
                 var slots = ChildSlots(it.Id);
                 if (slots.Count == 0) continue;
 
-                var minimalBuild = _weightAssembler.Assemble(it.Id, false, null, true);
+                var minimalBuild = _weightAssembler.Assemble(it.Id, false, null, StatObjective.Lightest);
                 if (minimalBuild == null) continue; // skip weapons whose mandatory parts cannot be assembled
-                double minimalWeight = PartAssembler.TotalWeight(_catalog, minimalBuild);
+
+                var heavyBuild = _weightAssembler.Assemble(it.Id, false, null, StatObjective.Heaviest) ?? minimalBuild;
+                var bestErgoBuild = _weightAssembler.Assemble(it.Id, false, null, StatObjective.BestErgo) ?? minimalBuild;
+                var worstErgoBuild = _weightAssembler.Assemble(it.Id, false, null, StatObjective.WorstErgo) ?? minimalBuild;
+                var bestRecoilBuild = _weightAssembler.Assemble(it.Id, false, null, StatObjective.BestRecoil) ?? minimalBuild;
+                var worstRecoilBuild = _weightAssembler.Assemble(it.Id, false, null, StatObjective.WorstRecoil) ?? minimalBuild;
+
+                var minStats = PartAssembler.TotalModsStats(_catalog, minimalBuild);
+                var heavyStats = PartAssembler.TotalModsStats(_catalog, heavyBuild);
+                var bestErgoStats = PartAssembler.TotalModsStats(_catalog, bestErgoBuild);
+                var worstErgoStats = PartAssembler.TotalModsStats(_catalog, worstErgoBuild);
+                var bestRecoilStats = PartAssembler.TotalModsStats(_catalog, bestRecoilBuild);
+                var worstRecoilStats = PartAssembler.TotalModsStats(_catalog, worstRecoilBuild);
 
                 // Base stats are taken exactly as the item database has them. They must NOT be clamped or replaced by guesses:
                 // any distortion makes the generated limits differ from what the game really calculates (e.g. a Mosin whose
@@ -680,7 +698,12 @@ namespace DailyGunsmith
                     BaseErgonomics = erg,
                     BaseRecoil = recoil,
                     ClassKey = ClassKeyOf(it),
-                    MinimalWeight = Math.Max(0.1, minimalWeight),
+                    MinimalWeight = Math.Max(0.1, minStats.weight),
+                    MaximalMandatoryWeight = Math.Max(minStats.weight, heavyStats.weight),
+                    MinMandatoryErgoDelta = worstErgoStats.ergoDelta,
+                    MaxMandatoryErgoDelta = bestErgoStats.ergoDelta,
+                    MinMandatoryRecoilPct = bestRecoilStats.recoilPct,
+                    MaxMandatoryRecoilPct = worstRecoilStats.recoilPct,
                     Slots = slots
                 });
             }
@@ -1009,6 +1032,8 @@ namespace DailyGunsmith
             var needs = new List<string>();
             if (GroupIds("suppressor").Count > 0 && rng.NextDouble() < Math.Clamp(tier?.SuppressorChance ?? 0, 0, 1))
                 needs.Add("suppressor");
+            else if (GroupIds("muzzle").Count > 0 && rng.NextDouble() < Math.Clamp(tier?.MuzzleChance ?? 0, 0, 1))
+                needs.Add("muzzle");
             if (GroupIds("foregrip").Count > 0 && rng.NextDouble() < Math.Clamp(tier?.ForegripChance ?? 0, 0, 1))
                 needs.Add("foregrip");
             if (GroupIds("tactical").Count > 0 && rng.NextDouble() < Math.Clamp(tier?.TacticalChance ?? 0, 0, 1))
@@ -1094,69 +1119,119 @@ namespace DailyGunsmith
                 if (!placed) open.RemoveAll(o => o.Parent == dangling);
             }
 
-            // ---- 4. limits calculated from several real completions of the build (worst case across genuinely
-            // different real part choices for the remaining mandatory slots, e.g. magazine/stock/pistol grip) ----
-            // Rather than one or two fixed completions plus a large arbitrary safety margin, we sample the
-            // lightest completion, the deterministic "standard" one and several genuinely randomized real
-            // completions, and take the worst value of each stat across all of them. That worst-case is what the
-            // limits are built from, so the numbers track the actual modules on the weapon instead of a guess.
+            // ---- 4. dynamic per-weapon limits from real completions & category variations ----
             var baseList = ToAssembledList(nodes);
             var variants = new List<List<AssembledPart>>();
-            var completedBuild = _weightAssembler.CompleteWeapon(baseList, true);
-            if (completedBuild != null) variants.Add(completedBuild);
-            var standardBuild = _weightAssembler.CompleteWeapon(baseList, false);
-            if (standardBuild != null) variants.Add(standardBuild);
-            const int randomCompletionSamples = 4;
-            for (var s = 0; s < randomCompletionSamples; s++)
+
+            void TryAddVariant(List<AssembledPart>? v)
             {
-                var sample = _weightAssembler.CompleteWeapon(baseList, false, rng);
-                if (sample != null) variants.Add(sample);
+                if (v != null && !PartAssembler.HasConflict(_catalog, v))
+                    variants.Add(v);
             }
 
-            double ergSum, recoilPct, totalBuildWeight;
-            // final safety net: no two parts of the whole build (weapon, required parts and completed mandatory parts) may conflict
-            reqs.HasConflict = variants.Count == 0
-                ? PartAssembler.HasConflict(_catalog, baseList)
-                : variants.Any(v => PartAssembler.HasConflict(_catalog, v));
+            // Sample deterministic boundary completions for this specific weapon + required parts
+            foreach (var obj in new[]
+            {
+                StatObjective.Default,
+                StatObjective.Lightest,
+                StatObjective.Heaviest,
+                StatObjective.BestErgo,
+                StatObjective.WorstErgo,
+                StatObjective.BestRecoil,
+                StatObjective.WorstRecoil
+            })
+            {
+                TryAddVariant(_weightAssembler.CompleteWeapon(baseList, obj));
+            }
+
+            // Sample randomized mandatory completions
+            const int randomCompletionSamples = 12;
+            for (var s = 0; s < randomCompletionSamples; s++)
+                TryAddVariant(_weightAssembler.CompleteWeapon(baseList, StatObjective.Default, rng));
+
+            // Sample alternative valid attachments for unlisted proof-category nodes (so any reasonable item of the category fits)
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                var n = nodes[i];
+                if (n.ProofCategory == null || n.Children > 0) continue;
+
+                var parentTpl = n.Parent != null ? n.Parent.Id : weapon.TemplateId;
+                var slotOpts = ChildSlots(parentTpl).FirstOrDefault(s => s.Name == n.SlotName);
+                if (slotOpts == null) continue;
+
+                var altCandidates = slotOpts.Candidates
+                    .Where(c => c != n.Id && InGroup(c, n.ProofCategory) && !AreConflicting(weapon.TemplateId, c))
+                    .OrderBy(_ => rng.Next())
+                    .Take(6)
+                    .ToList();
+
+                foreach (var altTpl in altCandidates)
+                {
+                    var altBase = baseList.Select(p => new AssembledPart { Tpl = p.Tpl, ParentIndex = p.ParentIndex, SlotName = p.SlotName }).ToList();
+                    altBase[i + 1].Tpl = altTpl; // index 0 is weapon root
+                    TryAddVariant(_weightAssembler.CompleteWeapon(altBase, StatObjective.Default, rng));
+                }
+            }
+
+            reqs.HasConflict = variants.Count == 0 || PartAssembler.HasConflict(_catalog, baseList);
+
+            double ExactErgo((double ergoDelta, double recoilPct, double weight) s) =>
+                Math.Max(0.0, weapon.BaseErgonomics + s.ergoDelta);
+
+            double ExactRecoil((double ergoDelta, double recoilPct, double weight) s) =>
+                Math.Max(1.0, weapon.BaseRecoil * Math.Max(0.1, 1.0 + s.recoilPct / 100.0));
 
             if (variants.Count > 0)
             {
-                var statsList = variants.Select(v => PartAssembler.TotalModsStats(_catalog, v)).ToList();
-                ergSum = statsList.Min(s => s.ergoDelta);        // worst case: least ergonomics any real completion can give
-                recoilPct = statsList.Max(s => s.recoilPct);     // worst case: most recoil any real completion can give
-                totalBuildWeight = statsList.Max(s => s.weight); // worst case: heaviest any real completion can be
+                // Witness is the primary completion of the generated tree (variants[0])
+                var witnessStats = PartAssembler.TotalModsStats(_catalog, variants[0]);
+                double witnessErgo = ExactErgo(witnessStats);
+                double witnessRecoil = ExactRecoil(witnessStats);
+                double witnessWeight = witnessStats.weight;
+
+                var allStats = variants.Select(v => PartAssembler.TotalModsStats(_catalog, v)).ToList();
+                double minErgo = allStats.Min(ExactErgo);
+                double maxErgo = allStats.Max(ExactErgo);
+                double minRecoil = allStats.Min(ExactRecoil);
+                double maxRecoil = allStats.Max(ExactRecoil);
+                double minWeight = allStats.Min(s => s.weight);
+                double maxWeight = allStats.Max(s => s.weight);
+
+                // Tier tightness factor (0.0 = most lenient / Easy, 1.0 = tightest / Hard)
+                double tierFactor = Math.Clamp(((tier?.MinLevel ?? 1) - 1) / 35.0, 0.0, 1.0);
+                double roll = 0.25 + rng.NextDouble() * 0.5; // 0.25..0.75 per-quest variance
+                double tightness = Math.Clamp(tierFactor * 0.6 + roll * 0.4, 0.15, 0.85);
+
+                // 1. Ergonomics (>=): anchored between worst valid completion and witness build, scaled by weapon's own ergonomics
+                double targetErgo = minErgo + (witnessErgo - minErgo) * tightness;
+                double weaponErgoMargin = Math.Max(1.0, Math.Min(witnessErgo, maxErgo) * 0.04 * (1.0 - 0.5 * tightness));
+                reqs.MinErgonomics = (float)Math.Max(0.0, Math.Floor(Math.Min(witnessErgo, targetErgo) - weaponErgoMargin));
+
+                // 2. Overall Recoil (<=): anchored between witness build and worst valid completion, scaled by weapon's own recoil
+                double targetRecoil = maxRecoil - (maxRecoil - witnessRecoil) * tightness;
+                double weaponRecoilMargin = Math.Max(2.0, witnessRecoil * 0.03 * (1.0 - 0.5 * tightness));
+                reqs.MaxRecoilSum = (float)Math.Ceiling(Math.Max(witnessRecoil, targetRecoil) + weaponRecoilMargin);
+
+                // 3. Weight (<=): anchored to the weapon's actual build weight and its mandatory/category weight spread
+                double marginMin = Math.Max(1.0, _config.WeightMarginMin);
+                double marginMax = Math.Max(marginMin, _config.WeightMarginMax);
+                double weaponWeightSpan = Math.Max(maxWeight - minWeight, weapon.MaximalMandatoryWeight - weapon.MinimalWeight);
+                double relativeSpan = minWeight > 0 ? weaponWeightSpan / minWeight : 0.1;
+
+                // Interpolate within [marginMin, marginMax] using both weapon weight variance and inverse tier tightness
+                double effectiveMultiplier = marginMin + (marginMax - marginMin) * Math.Clamp((1.0 - tightness) * 0.7 + Math.Min(1.0, relativeSpan) * 0.3, 0.0, 1.0);
+                double rawMaxWeight = Math.Max(maxWeight, witnessWeight * effectiveMultiplier);
+                reqs.MaxWeight = Math.Max(0.1, Math.Ceiling(rawMaxWeight * 10.0) / 10.0);
+
+                reqs.WitnessWeight = witnessWeight;
+                reqs.WitnessErgonomics = (float)witnessErgo;
+                reqs.WitnessRecoil = (float)witnessRecoil;
             }
             else
             {
-                double treeWeight = 0, treeErgo = 0, treeRecoil = 0;
-                foreach (var n in nodes)
-                    if (_catalog.Items.TryGetValue(n.Id, out var it)) { treeErgo += it.Ergonomics; treeRecoil += it.Recoil; treeWeight += it.Weight; }
-                ergSum = treeErgo;
-                recoilPct = treeRecoil;
-                totalBuildWeight = weapon.MinimalWeight + treeWeight;
+                reqs.HasConflict = true;
+                return reqs;
             }
-
-            float ergEstimate = (float)(weapon.BaseErgonomics + ergSum);
-            float recoilEstimate = (float)(weapon.BaseRecoil * Math.Max(0.3, 1 + recoilPct / 100.0));
-
-            // Ergonomics is a minimum ("at least"), recoil and weight are maximums.
-            // The lower bound must never exceed what the witness build can actually reach: very heavy builds can have
-            // ergonomics below 10 (even negative), and a hard floor of 10 made such quests impossible to hand in.
-            // The game never reports negative ergonomics, so the requirement bottoms out at 0.
-            reqs.MinErgonomics = Math.Clamp((float)Math.Floor(ergEstimate) - 2f, 0f, 85f);
-            // No upper clamp: a hard cap (the old 800) lies below the real recoil of heavy-recoil weapons and makes the quest
-            // impossible. A lower bound only loosens the requirement, so it is harmless.
-            reqs.MaxRecoilSum = Math.Max(90f, (float)Math.Ceiling(recoilEstimate * 1.1f));
-
-            // Weight: worst-case real completion weight x a (now much smaller) configurable margin, no extra flat buffer.
-            double marginMin = Math.Max(1.0, _config.WeightMarginMin);
-            double marginMax = Math.Max(marginMin, _config.WeightMarginMax);
-            double margin = marginMin + rng.NextDouble() * (marginMax - marginMin);
-            reqs.MaxWeight = Math.Max(1.0, Math.Ceiling(totalBuildWeight * margin * 10) / 10);
-
-            reqs.WitnessWeight = totalBuildWeight;
-            reqs.WitnessErgonomics = Math.Max(0f, ergEstimate);
-            reqs.WitnessRecoil = recoilEstimate;
 
             // ---- 5. result: listed parts + the full tree for the report ----
             var indexOf = new Dictionary<PlacedNode, int>();

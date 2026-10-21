@@ -1,5 +1,16 @@
 namespace DailyGunsmith;
 
+internal enum StatObjective
+{
+    Default,
+    Lightest,
+    Heaviest,
+    BestErgo,
+    WorstErgo,
+    BestRecoil,
+    WorstRecoil
+}
+
 internal sealed class AssembledPart
 {
     public string Tpl = "";
@@ -52,31 +63,34 @@ internal sealed class PartAssembler
     /// <param name="rng">random choice of parts; null = deterministic.</param>
     /// <param name="lightest">prefer the lightest parts (used to estimate the minimum weight of a working weapon).</param>
     /// <returns>the parts (index 0 = root) or null if some mandatory slot cannot be filled.</returns>
-    public List<AssembledPart>? Assemble(string rootTpl, bool armor, Random? rng, bool lightest, int maxArmorClass = 0)
+    public List<AssembledPart>? Assemble(string rootTpl, bool armor, Random? rng, bool lightest, int maxArmorClass = 0) =>
+        Assemble(rootTpl, armor, rng, lightest ? StatObjective.Lightest : StatObjective.Default, maxArmorClass);
+
+    public List<AssembledPart>? Assemble(string rootTpl, bool armor, Random? rng, StatObjective objective, int maxArmorClass = 0)
     {
         if (!_catalog.Items.ContainsKey(rootTpl)) return null;
         if (armor && maxArmorClass > 0 && _catalog.Items[rootTpl].ArmorClass > maxArmorClass) return null;
         var parts = new List<AssembledPart> { new AssembledPart { Tpl = rootTpl } };
-        return Fill(0, armor, rng, lightest, parts, 0, maxArmorClass) ? parts : null;
+        return Fill(0, armor, rng, objective, parts, 0, maxArmorClass) ? parts : null;
     }
 
     /// <summary>
     /// Completes all remaining mandatory slots (+ magazine) around an already placed tree of parts (index 0 = root weapon).
     /// Returns the completed part list, or null if some mandatory slot conflicts or cannot be filled.
-    /// <paramref name="rng"/> - when given, the remaining mandatory slots are filled with a genuinely random real
-    /// candidate instead of the lightest or the arbitrary deterministic ("standard") pick; used to sample realistic
-    /// variation in the witness build's weight/ergonomics/recoil (see QuestGenerator.BuildRequirements, step 4).
     /// </summary>
-    public List<AssembledPart>? CompleteWeapon(List<AssembledPart> prePlaced, bool lightest, Random? rng = null)
+    public List<AssembledPart>? CompleteWeapon(List<AssembledPart> prePlaced, bool lightest, Random? rng = null) =>
+        CompleteWeapon(prePlaced, lightest ? StatObjective.Lightest : StatObjective.Default, rng);
+
+    public List<AssembledPart>? CompleteWeapon(List<AssembledPart> prePlaced, StatObjective objective, Random? rng = null)
     {
         if (prePlaced.Count == 0 || !_catalog.Items.ContainsKey(prePlaced[0].Tpl)) return null;
         var parts = prePlaced.Select(p => new AssembledPart { Tpl = p.Tpl, ParentIndex = p.ParentIndex, SlotName = p.SlotName }).ToList();
         if (HasConflict(_catalog, parts)) return null; // the placed parts themselves must not conflict
-        if (!FillExisting(0, parts, lightest, 0, rng)) return null;
+        if (!FillExisting(0, parts, objective, 0, rng)) return null;
         return HasConflict(_catalog, parts) ? null : parts;
     }
 
-    private bool FillExisting(int index, List<AssembledPart> parts, bool lightest, int depth, Random? rng = null)
+    private bool FillExisting(int index, List<AssembledPart> parts, StatObjective objective, int depth, Random? rng = null)
     {
         if (depth > 8) return false;
         if (!_catalog.Items.TryGetValue(parts[index].Tpl, out var owner)) return false;
@@ -86,19 +100,20 @@ internal sealed class PartAssembler
             var existingIdx = parts.FindIndex(p => p.ParentIndex == index && string.Equals(p.SlotName, slot.Name, StringComparison.OrdinalIgnoreCase));
             if (existingIdx >= 0)
             {
-                if (!FillExisting(existingIdx, parts, lightest, depth + 1, rng)) return false;
+                if (!FillExisting(existingIdx, parts, objective, depth + 1, rng)) return false;
                 continue;
             }
 
             if (!MustFill(slot, false)) continue;
 
-            var candidates = Order(slot.Filter.Where(IsUsable).Where(c => !Conflicts(parts, c)), false, lightest ? null : rng, lightest);
+            var effRng = objective == StatObjective.Default ? rng : null;
+            var candidates = Order(slot.Filter.Where(IsUsable).Where(c => !Conflicts(parts, c)), false, effRng, objective);
             bool filled = false;
             foreach (var candidate in candidates)
             {
                 int mark = parts.Count;
                 parts.Add(new AssembledPart { Tpl = candidate, ParentIndex = index, SlotName = slot.Name });
-                if (Fill(parts.Count - 1, false, lightest ? null : rng, lightest, parts, depth + 1)) { filled = true; break; }
+                if (Fill(parts.Count - 1, false, effRng, objective, parts, depth + 1)) { filled = true; break; }
                 parts.RemoveRange(mark, parts.Count - mark);
             }
 
@@ -129,7 +144,7 @@ internal sealed class PartAssembler
         return n == "mod_magazine";
     }
 
-    private bool Fill(int index, bool armor, Random? rng, bool lightest, List<AssembledPart> parts, int depth, int maxArmorClass = 0)
+    private bool Fill(int index, bool armor, Random? rng, StatObjective objective, List<AssembledPart> parts, int depth, int maxArmorClass = 0)
     {
         if (depth > 8) return false;
         if (!_catalog.Items.TryGetValue(parts[index].Tpl, out var owner)) return false;
@@ -144,14 +159,14 @@ internal sealed class PartAssembler
             if (armor && maxArmorClass > 0)
                 allowed = allowed.Where(c => !_catalog.Items.TryGetValue(c, out var ci) || ci.ArmorClass <= maxArmorClass);
 
-            var candidates = Order(allowed, armorRule, rng, lightest, maxArmorClass);
+            var candidates = Order(allowed, armorRule, rng, objective, maxArmorClass);
 
             bool filled = false;
             foreach (var candidate in candidates)
             {
                 int mark = parts.Count;
                 parts.Add(new AssembledPart { Tpl = candidate, ParentIndex = index, SlotName = slot.Name });
-                if (Fill(parts.Count - 1, armor, rng, lightest, parts, depth + 1, maxArmorClass)) { filled = true; break; }
+                if (Fill(parts.Count - 1, armor, rng, objective, parts, depth + 1, maxArmorClass)) { filled = true; break; }
                 parts.RemoveRange(mark, parts.Count - mark); // roll back this candidate and everything below it
             }
 
@@ -171,14 +186,29 @@ internal sealed class PartAssembler
 
     private double Price(string tpl) => _catalog.Prices.TryGetValue(tpl, out var p) ? p : 0;
     private double Weight(string tpl) => _catalog.Items.TryGetValue(tpl, out var it) ? it.Weight : 0;
+    private double ErgoOf(string tpl) => _catalog.Items.TryGetValue(tpl, out var it) ? it.Ergonomics : 0;
+    private double RecoilOf(string tpl) => _catalog.Items.TryGetValue(tpl, out var it) ? it.Recoil : 0;
     private int ArmorClassOf(string tpl) => _catalog.Items.TryGetValue(tpl, out var it) ? (int)Math.Round(it.ArmorClass) : 0;
 
-    private List<string> Order(IEnumerable<string> candidates, bool armorRule, Random? rng, bool lightest, int maxArmorClass = 0)
+    private List<string> Order(IEnumerable<string> candidates, bool armorRule, Random? rng, StatObjective objective, int maxArmorClass = 0)
     {
         var list = candidates.Distinct().ToList();
 
-        if (lightest)
-            return list.OrderBy(Weight).ThenBy(c => c, StringComparer.Ordinal).ToList();
+        switch (objective)
+        {
+            case StatObjective.Lightest:
+                return list.OrderBy(Weight).ThenBy(c => c, StringComparer.Ordinal).ToList();
+            case StatObjective.Heaviest:
+                return list.OrderByDescending(Weight).ThenBy(c => c, StringComparer.Ordinal).ToList();
+            case StatObjective.BestErgo:
+                return list.OrderByDescending(ErgoOf).ThenBy(Weight).ThenBy(c => c, StringComparer.Ordinal).ToList();
+            case StatObjective.WorstErgo:
+                return list.OrderBy(ErgoOf).ThenByDescending(Weight).ThenBy(c => c, StringComparer.Ordinal).ToList();
+            case StatObjective.BestRecoil:
+                return list.OrderBy(RecoilOf).ThenBy(Weight).ThenBy(c => c, StringComparer.Ordinal).ToList();
+            case StatObjective.WorstRecoil:
+                return list.OrderByDescending(RecoilOf).ThenByDescending(Weight).ThenBy(c => c, StringComparer.Ordinal).ToList();
+        }
 
         if (armorRule)
         {

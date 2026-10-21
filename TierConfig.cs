@@ -36,6 +36,9 @@ public class TierConfig
     /// <summary>Chance (0..1) that the quest additionally requires a tactical device: flashlight, laser or combo (any counts).</summary>
     public double TacticalChance { get; set; } = 0.2;
 
+    /// <summary>Chance (0..1) that the quest additionally requires a muzzle device: brake, compensator or flash hider (any counts, suppressors don't).</summary>
+    public double MuzzleChance { get; set; } = 0.2;
+
     /// <summary>Chance (0..1) that the quest requires a specific magazine (a concrete magazine of the weapon is listed as a required part).</summary>
     public double MagazineChance { get; set; } = 0.25;
 

@@ -38,6 +38,7 @@ internal static class ConfigValidator
         CheckIds("modules", "categoryBlacklist", config.Modules.CategoryBlacklist);
 
         CheckIds("categoryGroups", "suppressor", config.CategoryGroups.Suppressor);
+        CheckIds("categoryGroups", "muzzle", config.CategoryGroups.Muzzle);
         CheckIds("categoryGroups", "reflex", config.CategoryGroups.Reflex);
         CheckIds("categoryGroups", "assaultScope", config.CategoryGroups.AssaultScope);
         CheckIds("categoryGroups", "scope", config.CategoryGroups.Scope);
@@ -67,8 +68,8 @@ internal static class ConfigValidator
             if (t.Weight < 0) warnings.Add($"tiers.{t.Name}: negative weight");
             if (t.SuppressorChance < 0 || t.SuppressorChance > 1) warnings.Add($"tiers.{t.Name}: suppressorChance must be between 0 and 1");
 
-            if (t.ForegripChance < 0 || t.ForegripChance > 1) warnings.Add($"tiers.{t.Name}: foregripChance must be between 0 and 1");
             if (t.TacticalChance < 0 || t.TacticalChance > 1) warnings.Add($"tiers.{t.Name}: tacticalChance must be between 0 and 1");
+            if (t.MuzzleChance < 0 || t.MuzzleChance > 1) warnings.Add($"tiers.{t.Name}: muzzleChance must be between 0 and 1");
 
             if (t.MagazineChance < 0 || t.MagazineChance > 1) warnings.Add($"tiers.{t.Name}: magazineChance must be between 0 and 1");
             foreach (var key in t.SightModeWeights.Keys)
